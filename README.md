@@ -1,12 +1,10 @@
-# My GameTank Game
+# GameTank OS
 
-Build it with the "make" command
+At first this was just a demo for my mouse and keyboard adapter for the GameTank and it only repeated text entered, or simulated icons draggable on a desktop.
+Then I started adding acutal OS features like multitasking, allocation, event handling, etc. So now I'm just gonna lean into it and add more stuff like loading external binaries and FAT16 support and blah blah blah...
 
-Import art/music by adding it to a folder inside the "assets" directory, and then run "make import" to update generated project files.
+Assumes that a particular PS/2 adapter is attached which is not solidified at time of writing nor is it implemented in the emulator yet, so you'll need real hardware
 
-If you have pulled and built the GameTankEmulator repo in an adjacent folder, run "make emulate" to test the game.
-
-src/main.c contains the code that will run after the console powers on
 
 ## Build requirements:
 
