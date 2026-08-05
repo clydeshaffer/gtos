@@ -5,6 +5,7 @@ Then I started adding acutal OS features like multitasking, allocation, event ha
 
 Assumes that a particular PS/2 adapter is attached which is not solidified at time of writing nor is it implemented in the emulator yet, so you'll need real hardware
 
+Note: If you ended up here thinking you need some kind of OS to make a GameTank game just go to the main C SDK repo. GTOS is basically just for getting the GameTank to cosplay as a desktop PC.
 
 ## Build requirements:
 
