@@ -9,6 +9,7 @@
 #include "../gt/feature/random/random.h"
 
 #pragma code-name (push, "PROG0")
+#pragma rodata-name (push, "PROG0")
 
 #define SQUARE_COUNT 64
 #define WAS_RIGHT_CLICK 0x80
@@ -52,13 +53,57 @@ void copy8x8(char* src, char* dest) {
     }
 }
 
+static char smiley_click_test() {
+    if(!my(window_open)) return 0;
+
+    if(u(mouse_display_x[activeMouse] - (my(window_x)+28)) > u(my(window_w)-58)) return 0;
+    if(u(mouse_display_y[activeMouse] - (my(window_y)+4)) > u(my(window_h)-70)) return 0;
+
+    return 1;
+}
+
 static char subwindow_rect_test() {
     if(!my(window_open)) return 0;
 
-    if(u(mouse_display_x - (my(window_x)+1)) > u(my(window_w)-4)) return 0;
-    if(u(mouse_display_y - (my(window_y)+12)) > u(my(window_h)-13)) return 0;
+    if(u(mouse_display_x[activeMouse] - (my(window_x)+1)) > u(my(window_w)-4)) return 0;
+    if(u(mouse_display_y[activeMouse] - (my(window_y)+12)) > u(my(window_h)-13)) return 0;
 
     return 1;
+}
+
+static void init_mine_game() {
+    my(window_sprite) = allocate_sprite(&ASSET__gfx__mines_bmp_load_list);
+    ctx->click_count = 64;
+    ctx->game_done = 0;
+
+    for(tmp = 0; tmp < SQUARE_COUNT; ++tmp) {
+        ctx->squares[tmp] = 0;
+    }
+    for(tmp = 0; tmp < MINE_COUNT; ++tmp) {
+        tmp2 = rnd_range(0, 63);
+        if(ctx->squares[tmp2] < 9) {
+            ctx->click_count--;
+            ctx->squares[tmp2] = MINE_SQUARE;
+            if((tmp2 & 7)) ctx->squares[tmp2-1]++;
+            if((tmp2 & 7) < 7) ctx->squares[tmp2+1]++;
+            if(tmp2 > 7) {
+                ctx->squares[tmp2-8]++;
+                if((tmp2 & 7)) ctx->squares[tmp2-9]++;
+                if((tmp2 & 7) < 7) ctx->squares[tmp2-7]++;
+            }
+            if(tmp2 < 56) {
+                ctx->squares[tmp2+8]++;
+                if((tmp2 & 7)) ctx->squares[tmp2+7]++;
+                    if((tmp2 & 7) < 7) ctx->squares[tmp2+9]++;
+            }
+        }
+    }
+    for(tmp = 0; tmp < SQUARE_COUNT; ++tmp) {
+        if(ctx->squares[tmp] > MINE_SQUARE) {
+            ctx->squares[tmp] = MINE_SQUARE;
+        }
+    }
+    ctx->square_clicked = 255;
 }
 
 static void mines_app_handler(char e) {
@@ -102,13 +147,25 @@ static void mines_app_handler(char e) {
                  
                 ctx->square_clicked = 255;
             }
+
+            if(ctx->game_done == 255) {
+                free_sprite(my(window_sprite));
+                init_mine_game();
+            }
             break;
         case WINDOW_EVENT_MOUSE_CLICK:
         case WINDOW_EVENT_RIGHT_CLICK:
-            if(ctx->game_done) break;
+            if(ctx->game_done) {
+                 if(ctx->game_done == 1) {
+                    if(smiley_click_test()) {
+                        ctx->game_done = 255;
+                    }
+                }    
+                break;
+            }
             if(subwindow_rect_test()) {
-                ctx->square_clicked = (((mouse_display_x - my(window_x)) - 1) >> 3)
-                    + (((mouse_display_y - my(window_y)) - 12) & 0x38);
+                ctx->square_clicked = (((mouse_display_x[activeMouse] - my(window_x)) - 1) >> 3)
+                    + (((mouse_display_y[activeMouse] - my(window_y)) - 12) & 0x38);
                 if(e == WINDOW_EVENT_RIGHT_CLICK)
                     ctx->square_clicked |= WAS_RIGHT_CLICK;
             }
@@ -128,43 +185,12 @@ static void mines_app_handler(char e) {
 void mines_app_launch() {
     if(desktop_launch_app(mines_app_handler) != 255) {
         my(window_context) = mem_alloc(sizeof(mines_app_context));
-        my(window_sprite) = allocate_sprite(&ASSET__gfx__mines_bmp_load_list);
         my(window_x) = 32 + (mines_app_open_count<<2);
         my(window_y) = 24 + (mines_app_open_count<<2);
         my(window_w) = mines_app_W;
         my(window_h) = mines_app_H;
 
-        ctx->click_count = 64;
-        ctx->game_done = 0;
-
-        for(tmp = 0; tmp < SQUARE_COUNT; ++tmp) {
-            ctx->squares[tmp] = 0;
-        }
-        for(tmp = 0; tmp < MINE_COUNT; ++tmp) {
-            tmp2 = rnd_range(0, 63);
-            if(ctx->squares[tmp2] < 9) {
-                ctx->click_count--;
-                ctx->squares[tmp2] = MINE_SQUARE;
-                if((tmp2 & 7)) ctx->squares[tmp2-1]++;
-                if((tmp2 & 7) < 7) ctx->squares[tmp2+1]++;
-                if(tmp2 > 7) {
-                    ctx->squares[tmp2-8]++;
-                    if((tmp2 & 7)) ctx->squares[tmp2-9]++;
-                    if((tmp2 & 7) < 7) ctx->squares[tmp2-7]++;
-                }
-                if(tmp2 < 56) {
-                    ctx->squares[tmp2+8]++;
-                    if((tmp2 & 7)) ctx->squares[tmp2+7]++;
-                     if((tmp2 & 7) < 7) ctx->squares[tmp2+9]++;
-                }
-            }
-        }
-        for(tmp = 0; tmp < SQUARE_COUNT; ++tmp) {
-            if(ctx->squares[tmp] > MINE_SQUARE) {
-                ctx->squares[tmp] = MINE_SQUARE;
-            }
-        }
-        ctx->square_clicked = 255;
+        init_mine_game();
         
         ++mines_app_open_count;
     }

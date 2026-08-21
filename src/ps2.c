@@ -1,6 +1,7 @@
 #include "gt/gametank.h"
 #include "ps2.h"
 #include "util.h"
+#include "exbus.h"
 
 #define CLEAR_INHIBIT (1<<5)
 #define WRITE_STROBE (1<<4)
@@ -10,45 +11,69 @@
 #define SET(bit) via[ORA] |= bit
 #define CLEAR(bit) via[ORA] &= ~bit
 
-char ledMask = 0;
-char oldLedMask = 0;
-static char tmp;
+char ps2_device_count;
+char ps2_device_types[MAX_PS2_CARDS];
+char ps2_exbus_addrs[MAX_PS2_CARDS];
 
-void exbus_select_device(char addr) {
-    via[0x0C] = 0b11101110;
-    tmp = via[DDRB];
-    via[DDRB] = 0xFF;
-    via[ORB] = addr;
-    via[0x0C] = 0b11001100;
-    via[DDRB] = tmp;
+static char tmp;
+static char resb;
+static char response_buf[8];
+static char i;
+
+void ps2_select(char index) {
+  exbus_select_device(ps2_exbus_addrs[index]);
+  EXBUS_MODE = EXBUS_DEVICE;
+
+  via[DDRA] |= (CLEAR_INHIBIT | WRITE_STROBE | READ_STROBE);
+  via[DDRA] &= ~PACKET_DONE;
+  via[ORA] |= (CLEAR_INHIBIT | WRITE_STROBE | READ_STROBE);
+  via[DDRB] = 0;
+}
+
+char ps2_identify_device() {
+  resb = send_byte_and_get_response(0xF2, response_buf, 8);
+  if((resb == 2) && ((response_buf[1] == 0) || (response_buf[1] == 3) || (response_buf[1] == 4))) {
+      return PS2_DEVICE_TYPE_BASIC_MOUSE;
+  } else {
+      return PS2_DEVICE_TYPE_BASIC_KEYBOARD; //TODO check for actual keyboard types and return UNKNOWN if no match
+  }
+}
+
+void ps2_reset_device() {
+  send_byte_and_get_response(0xFF, response_buf, 8);
+}
+
+void ps2_start_scanning() {
+  send_byte_and_get_response(0xF4, response_buf, 8);
+}
+
+void ps2_stop_scanning() {
+  send_byte_and_get_response(0xF5, response_buf, 8);
 }
 
 void ps2_init() {
-    exbus_select_device(0);
+    ps2_device_count = 0;
+    for(i = 0; i < 255; ++i) {
+        if(exbus_query_device(i) == 0xF2) {
+            ps2_exbus_addrs[ps2_device_count] = i;
+            ++ps2_device_count;
+            if(ps2_device_count == MAX_PS2_CARDS) {
+                break;
+            }            
+        }
+    }
 
-    via[DDRA] |= (CLEAR_INHIBIT | WRITE_STROBE | READ_STROBE);
-    via[DDRA] &= ~PACKET_DONE;
-    via[ORA] |= (CLEAR_INHIBIT | WRITE_STROBE | READ_STROBE);
-    via[DDRB] = 0;
-}
+    for(i = 0; i < ps2_device_count; ++i) {
+      ps2_select(i);
+      ps2_reset_device();
+      delayMicroseconds(100);
+      ps2_stop_scanning();
+      delayMicroseconds(100);
+      ps2_device_types[i] = ps2_identify_device();
+      delayMicroseconds(100);
+      ps2_start_scanning();
+    }
 
-//0, 1, 2, 3, 4, 5, 6, 7
-//0, 7, 6, 5, 4, 1, 2, 3
-//only needed on the breadboard
-//which was wired for physical not digital convenience
-//remove for PCB version with consistent ordering
-char scramble(char b) {
-    tmp = 0;
-    tmp |= (b & 0b10001000);
-    //tmp |= (b & 1) << 6;
-    //tmp |= (b & 2) << 4;
-    //tmp |= (b & 4) << 2;
-    //tmp |= (b & (16|32|64)) >> 4;
-    tmp |= (b & (1|2|4)) << 4;
-    tmp |= (b & 16) >> 2;
-    tmp |= (b & 32) >> 4;
-    tmp |= (b & 64) >> 6;
-    return tmp;
 }
 
 char read_byte() {
@@ -70,7 +95,7 @@ void send_byte(char b) {
     delayMicroseconds(100);
     CLEAR(WRITE_STROBE);
     via[DDRA] &= ~PACKET_DONE;
-    via[ORA] &= ~PACKET_DONE;;
+    via[ORA] &= ~PACKET_DONE;
     SET(WRITE_STROBE);
     CLEAR(CLEAR_INHIBIT);
     SET(CLEAR_INHIBIT);
@@ -108,35 +133,6 @@ int send_byte_and_get_response(unsigned char b, unsigned char* buf, int lim) {
     response_bytes++;
   }
   return response_bytes;
-}
-
-void handle_led_keys(unsigned char lastRead) {
-    if((lastRead & 0xFF) == 0x77) {
-        ledMask ^= 2;
-    }
-
-    if((lastRead & 0xFF) == 0x58) {
-        ledMask ^= 4;
-    }
-
-    if((lastRead & 0xFF) == 0x7E) {
-        ledMask ^= 1;
-    }
-
-    if(ledMask != oldLedMask) {
-        oldLedMask = ledMask;
-        send_byte(0xED);
-        wait_for_packet();
-        lastRead = read_byte();
-        //Serial.println(lastRead & 0xFF, HEX);
-        clear_clock_inhibit();
-        wait_for_packet();
-        clear_clock_inhibit();
-        send_byte(ledMask);
-        wait_for_packet();
-        lastRead = read_byte();
-        //Serial.println(lastRead & 0xFF, HEX);
-    }
 }
 
 char ps2_data_ready() {

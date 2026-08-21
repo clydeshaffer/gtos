@@ -32,7 +32,7 @@ char printbuf_len = 0;
 char isBreak = 0;
 char lastRead = 0;
 char shiftMask = 0;
-char isMouse = 0;
+char anyDeviceUpdated = 0;
 char old_text_x, old_text_y;
 char resb;
 char doubleclear = 0;
@@ -93,8 +93,13 @@ void mainloop_keyboard () {
         
         printbuf_len = 0;
 
-        while(ps2_data_ready()) {
-            lastRead = read_byte();
+        while(poll_keyboard(0)) {
+            delayMicroseconds(255);
+            delayMicroseconds(255);
+        }
+
+       /* while(keyboard_buf_count()) {
+            lastRead = pop_keyboard().data;
 
             if(lastRead == 0xF0) {
                 isBreak = 1;
@@ -109,7 +114,7 @@ void mainloop_keyboard () {
                     
                     //printbuf[0] = hexchar(lastRead >> 4);
                     //printbuf[1] = hexchar(lastRead);
-                    handle_led_keys(lastRead);
+                    handle_led_keys(lastRead, 0);
                 }
 
                 if(lastRead == 0x12) {
@@ -122,9 +127,10 @@ void mainloop_keyboard () {
 
                 isBreak = 0;
             }
-            delayMicroseconds(255);
-            delayMicroseconds(255);
-        }
+            
+        }*/
+
+        
 
         if(printbuf[0]) {
             if(printbuf_len >= PRINTBUF_MAX-1) printbuf_len = PRINTBUF_MAX-2;
@@ -202,7 +208,20 @@ void mainloop_mouse() {
 
         desktop_early_draw();
 
-        update_mouse();
+        do {
+            anyDeviceUpdated = 0;
+            for(tmp = 0; tmp < ps2_device_count; ++tmp) {
+                if(ps2_device_types[tmp] == PS2_DEVICE_TYPE_BASIC_MOUSE) {
+                    anyDeviceUpdated |= poll_mouse(tmp);
+                } else if(ps2_device_types[tmp] == PS2_DEVICE_TYPE_BASIC_KEYBOARD) {
+                    anyDeviceUpdated |= poll_keyboard(tmp);
+                }
+            }
+            if(anyDeviceUpdated) {
+                delayMicroseconds(255);
+            }
+        } while(anyDeviceUpdated);
+
         desktop_update();
         desktop_draw();
         desktop_late_update();
@@ -218,31 +237,6 @@ void main () {
     mem_init();
     
     ps2_init();
-
-    resb = send_byte_and_get_response(0xFF, response_buf, 8);
-    debug_print_resp();
-
-    delayMicroseconds(100);
-
-    resb = send_byte_and_get_response(0xF5, response_buf, 8);
-    debug_print_resp();
-
-    delayMicroseconds(100);
-
-    resb = send_byte_and_get_response(0xF2, response_buf, 8);
-    if((resb == 2) && ((response_buf[1] == 0) || (response_buf[1] == 3) || (response_buf[1] == 4))) {
-        isMouse = 1;
-    }
-
-    debug_print_resp();
-
-    delayMicroseconds(100);
-
-    resb = send_byte_and_get_response(0xF4, response_buf, 8);
-    debug_print_resp();
-
-    
-    delayMicroseconds(100);
 
     text_init();
     text_sprite = text_load_font();
@@ -267,7 +261,20 @@ void main () {
     debug_buf_idx = 0;
     debug_buf[0] = 0;
 
-    if(isMouse) {
+    for(tmp = 0; tmp < ps2_device_count; ++tmp) {
+        
+        if(ps2_device_types[tmp] == PS2_DEVICE_TYPE_BASIC_MOUSE) {
+            firstMouse = tmp;
+            text_print_string("M");
+            break;
+        } else if(ps2_device_types[tmp] == PS2_DEVICE_TYPE_BASIC_KEYBOARD) {
+            text_print_string("K");
+        } else {
+            text_print_string("X");
+        }
+    }
+
+    if(firstMouse != 255) {
         text_print_string("Mouse detected\r\nLoading GUI...");
         await_drawing();
         flip_pages();

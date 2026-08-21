@@ -7,6 +7,9 @@
 #include "../mem.h"
 #include "../gen/assets/gfx.h"
 
+#pragma code-name (push, "PROG0")
+#pragma rodata-name (push, "PROG0")
+
 typedef struct {
 char dx, dy;
 } spike_app_context;
@@ -52,8 +55,8 @@ void spike_app_launch() {
         my(window_context) = mem_alloc(sizeof(spike_app_context));
         my(window_sprite) = allocate_sprite(&ASSET__gfx__spikeball_bmp_load_list);
         set_sprite_frametable(my(window_sprite), ASSET__gfx__spikeball_json);
-        my(window_x) = mouse_display_x;
-        my(window_y) = mouse_display_y;
+        my(window_x) = mouse_display_x[activeMouse];
+        my(window_y) = mouse_display_y[activeMouse];
         my(window_w) = spike_app_W;
         my(window_h) = spike_app_H;
         ctx->dx = ((spike_app_open_count << 1) & 2) - 1;

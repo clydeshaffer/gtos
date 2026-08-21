@@ -11,6 +11,7 @@
 #include "../gen/assets/music.h"
 #include "../gen/assets/music2.h"
 #pragma code-name (push, "PROG0")
+#pragma rodata-name (push, "PROG0")
 
 #define TRACK_COUNT 8
 
@@ -50,8 +51,8 @@ static void copyTitle(char* src, char* dest) {
 static char subwindow_rect_test() {
     if(!my(window_open)) return 0;
 
-    if(u(mouse_display_x - (my(window_x)+1)) > u(my(window_w)-4)) return 0;
-    if(u(mouse_display_y - (my(window_y)+15)) > u(my(window_h)-16)) return 0;
+    if(u(mouse_display_x[activeMouse] - (my(window_x)+1)) > u(my(window_w)-4)) return 0;
+    if(u(mouse_display_y[activeMouse] - (my(window_y)+15)) > u(my(window_h)-16)) return 0;
 
     return 1;
 }
@@ -104,7 +105,7 @@ static void mplayer_app_handler(char e) {
             break;
         case WINDOW_EVENT_MOUSE_CLICK:
             if(subwindow_rect_test()) {
-                tmp = (mouse_display_x - (my(window_x) + 1)) >> 4;
+                tmp = (mouse_display_x[activeMouse] - (my(window_x) + 1)) >> 4;
                 switch(tmp) {
                     case 0:
                         ctx->track_number--;
@@ -142,6 +143,8 @@ static void mplayer_app_handler(char e) {
         case WINDOW_EVENT_MOUSE_RELEASE:
             break;
         case WINDOW_EVENT_EXIT:
+            if(ctx->music_playing) stop_music();
+            ctx->music_playing = 0;
             free_sprite(my(window_sprite));
             mem_free(my(window_context));
             --mplayer_app_open_count;

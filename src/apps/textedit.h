@@ -1,0 +1,1 @@
+void text_edit_app_launch();

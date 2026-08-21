@@ -10,6 +10,33 @@
    },
    {
     "filename": "icons 1.aseprite",
+    "frame": { "x": 73, "y": 0, "w": 5, "h": 7 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 12, "y": 12, "w": 5, "h": 7 },
+    "sourceSize": { "w": 24, "h": 24 },
+    "duration": 100
+   },
+   {
+    "filename": "icons 2.aseprite",
+    "frame": { "x": 78, "y": 0, "w": 5, "h": 7 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 12, "y": 12, "w": 5, "h": 7 },
+    "sourceSize": { "w": 24, "h": 24 },
+    "duration": 100
+   },
+   {
+    "filename": "icons 3.aseprite",
+    "frame": { "x": 83, "y": 0, "w": 5, "h": 7 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 12, "y": 12, "w": 5, "h": 7 },
+    "sourceSize": { "w": 24, "h": 24 },
+    "duration": 100
+   },
+   {
+    "filename": "icons 4.aseprite",
     "frame": { "x": 12, "y": 0, "w": 12, "h": 12 },
     "rotated": false,
     "trimmed": true,
@@ -18,7 +45,7 @@
     "duration": 100
    },
    {
-    "filename": "icons 2.aseprite",
+    "filename": "icons 5.aseprite",
     "frame": { "x": 48, "y": 0, "w": 10, "h": 11 },
     "rotated": false,
     "trimmed": true,
@@ -27,7 +54,7 @@
     "duration": 100
    },
    {
-    "filename": "icons 3.aseprite",
+    "filename": "icons 6.aseprite",
     "frame": { "x": 24, "y": 0, "w": 12, "h": 12 },
     "rotated": false,
     "trimmed": true,
@@ -36,7 +63,7 @@
     "duration": 100
    },
    {
-    "filename": "icons 4.aseprite",
+    "filename": "icons 7.aseprite",
     "frame": { "x": 58, "y": 0, "w": 10, "h": 11 },
     "rotated": false,
     "trimmed": true,
@@ -45,7 +72,7 @@
     "duration": 100
    },
    {
-    "filename": "icons 5.aseprite",
+    "filename": "icons 8.aseprite",
     "frame": { "x": 0, "y": 0, "w": 12, "h": 13 },
     "rotated": false,
     "trimmed": true,
@@ -54,7 +81,7 @@
     "duration": 100
    },
    {
-    "filename": "icons 6.aseprite",
+    "filename": "icons 9.aseprite",
     "frame": { "x": 36, "y": 0, "w": 12, "h": 12 },
     "rotated": false,
     "trimmed": true,
@@ -71,6 +98,13 @@
   "size": { "w": 128, "h": 13 },
   "scale": "1",
   "frameTags": [
+   { "name": "cursors", "from": 0, "to": 3, "direction": "forward", "color": "#000000ff" },
+   { "name": "folder", "from": 4, "to": 4, "direction": "forward", "color": "#000000ff" },
+   { "name": "exe", "from": 5, "to": 5, "direction": "forward", "color": "#000000ff" },
+   { "name": "trash", "from": 6, "to": 6, "direction": "forward", "color": "#000000ff" },
+   { "name": "paintbrush", "from": 7, "to": 7, "direction": "forward", "color": "#000000ff" },
+   { "name": "spikeball", "from": 8, "to": 8, "direction": "forward", "color": "#000000ff" },
+   { "name": "music", "from": 9, "to": 9, "direction": "forward", "color": "#000000ff" }
   ],
   "layers": [
    { "name": "Layer 1", "opacity": 255, "blendMode": "normal" }

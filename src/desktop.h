@@ -18,7 +18,7 @@ extern char window_w[MAX_APPS];
 extern char window_h[MAX_APPS];
 extern SpriteSlot window_sprite[MAX_APPS];
 extern void* window_context[MAX_APPS];
-
+extern char activeMouse;
 #define my(prop) (prop[current_app])
 
 void desktop_init();
