@@ -37,6 +37,7 @@ char old_text_x, old_text_y;
 char resb;
 char doubleclear = 0;
 
+#pragma code-name (push, "PROG0")
 
 char hexchar(char n) {
     n = n & 0x0F;
@@ -75,17 +76,6 @@ void print_hex_to_debug_buf(char c) {
     debug_buf[debug_buf_idx] = 0;
 }
 
-char di;
-void debug_print_resp() {
-    for(di = 0; di < resb; ++di) {
-        print_hex_to_debug_buf(response_buf[di]);
-    }
-    debug_buf[debug_buf_idx++] = '|';
-    debug_buf[debug_buf_idx++] = ' ';
-    debug_buf[debug_buf_idx] = 0;
-}
-
-#pragma code-name (push, "PROG0")
 void mainloop_keyboard () {
 
     while (1) {                                     //  Run forever
@@ -208,19 +198,25 @@ void mainloop_mouse() {
 
         desktop_early_draw();
 
+        frameflag = 1;
         do {
             anyDeviceUpdated = 0;
             for(tmp = 0; tmp < ps2_device_count; ++tmp) {
                 if(ps2_device_types[tmp] == PS2_DEVICE_TYPE_BASIC_MOUSE) {
                     anyDeviceUpdated |= poll_mouse(tmp);
+                    anyDeviceUpdated |= (mouse_parity(tmp) != 0);
                 } else if(ps2_device_types[tmp] == PS2_DEVICE_TYPE_BASIC_KEYBOARD) {
                     anyDeviceUpdated |= poll_keyboard(tmp);
                 }
             }
-            if(anyDeviceUpdated) {
-                delayMicroseconds(255);
-            }
-        } while(anyDeviceUpdated);
+            //if(anyDeviceUpdated) {
+            //    delayMicroseconds(255);
+            //}
+        } while(anyDeviceUpdated && frameflag);
+        if(frameflag) {
+            //got here if a mouse lagged out off alignment or too many messages came
+            frameflag = 0;
+        }
 
         desktop_update();
         desktop_draw();

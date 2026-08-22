@@ -63,6 +63,16 @@ keyboard_packet pop_keyboard() {
     return tmp_pkt;
 }
 
+char push_keyboard(keyboard_packet packet) {
+    if(keystroke_count == KEY_BUF_MAX) return 0;
+    keystroke_buf[keystroke_head] = packet.data;
+    keystroke_src[keystroke_head] = packet.src;
+    ++keystroke_head;
+    keystroke_head &= (KEY_BUF_MAX-1);
+    ++keystroke_count;
+    return 1;
+}
+
 char poll_keyboard(char index) {
     ps2_select(index);
     if(keystroke_count == KEY_BUF_MAX) {

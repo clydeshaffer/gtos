@@ -1,5 +1,7 @@
 #include "desktop.h"
 #include "mouse.h"
+#include "keyboard.h"
+#include "scancodes.h"
 #include "ps2.h"
 #include "gt/gfx/draw_queue.h"
 #include "gt/gfx/draw_direct.h"
@@ -29,25 +31,41 @@ char icons_f[MAX_ICONS] = {
 };
 
 char icons_app[MAX_ICONS] = {0, 0, 2, 5, 1, 3, 4};
-char dragging_index[MAX_PS2_CARDS] = {255};
+
+#define MODIFIER_R_ALT 1
+#define MODIFIER_L_ALT 2
+#define MODIFIER_R_SHIFT 4
+#define MODIFIER_L_SHIFT 8
+#define MODIFIER_R_CTRL 16
+#define MODIFIER_L_CTRL 32
+static char modifier_key_mask[MAX_PS2_CARDS] = {0, 0, 0, 0};
+static char keycode_isBreak[MAX_PS2_CARDS] = {0, 0, 0, 0};
+
+char dragging_index[MAX_PS2_CARDS] = {255, 255, 255, 255};
 char dragged_app[MAX_PS2_CARDS] = {0};
 char drag_rel_x[MAX_PS2_CARDS] = {0};
 char drag_rel_y[MAX_PS2_CARDS] = {0};
+char frames_since_click[MAX_PS2_CARDS] = {0, 0, 0, 0};
+static char oldMouseStatus[MAX_PS2_CARDS];
+static char alt_tab_depth[MAX_PS2_CARDS] = {2, 2, 2, 2};
 
 SpriteSlot bg_sprite;
 SpriteSlot icons_sprite;
 
 char app_to_launch = 0;
-char current_app = 0;
-char app_draw_index = 0;
-char window_open[MAX_APPS] = {0};
+char current_app;
+char app_draw_index;
+char draw_order_count = 0;
+
+char foreground_app = 0xFF;
+char window_open[MAX_APPS];
 char window_draw_order[MAX_APPS];
 char window_x[MAX_APPS];
 char window_y[MAX_APPS];
 char window_w[MAX_APPS];
 char window_h[MAX_APPS];
 void* window_context[MAX_APPS];
-char frames_since_click[MAX_PS2_CARDS] = {0};
+
 char last_window_clicked = MAX_APPS;
 SpriteSlot window_sprite[MAX_APPS];
 char window_to_bump = 0xFF;
@@ -56,10 +74,12 @@ char activeMouse;
 
 void (*window_handler[MAX_APPS]) (char);
 static char tmp = 0;
-static char oldMouseStatus[MAX_PS2_CARDS];
+
+static keyboard_packet tmp_key_packet;
 
 void remove_from_draw_order(char appslot) {
-    char hit = 0xFF;
+    static char hit;
+    hit = 0xFF;
     for(app_draw_index = 0; app_draw_index < MAX_APPS; ++app_draw_index) {
         if(window_draw_order[app_draw_index] == appslot) {
             hit = app_draw_index;
@@ -71,6 +91,10 @@ void remove_from_draw_order(char appslot) {
         window_draw_order[app_draw_index] = window_draw_order[app_draw_index+1];
     }
     window_draw_order[MAX_APPS-1] = 0xFF;
+    --draw_order_count;
+    if(appslot == foreground_app) {
+        foreground_app = 0xFF;
+    }
 }
 
 void bump_to_top(char appslot) {
@@ -78,6 +102,8 @@ void bump_to_top(char appslot) {
     for(app_draw_index = 0; app_draw_index < MAX_APPS; ++app_draw_index) {
         if(window_draw_order[app_draw_index] == 0xFF) {
             window_draw_order[app_draw_index] = appslot;
+            ++draw_order_count;
+            foreground_app = appslot;
             return;
         }
     }
@@ -107,6 +133,8 @@ char desktop_launch_app(void(*handler)(char)) {
             for(app_draw_index = 0; app_draw_index < MAX_APPS; ++app_draw_index) {
                 if(window_draw_order[app_draw_index] == 0xFF) {
                     window_draw_order[app_draw_index] = current_app;
+                    ++draw_order_count;
+                    foreground_app = current_app;
                     return current_app;
                 }
             }
@@ -117,8 +145,52 @@ char desktop_launch_app(void(*handler)(char)) {
 }
 
 void desktop_update() {
+    static char tmp_mod_code;
     activeMouse = firstMouse;
     rnd();
+
+    for(tmp = 0; tmp < keyboard_buf_count(); ++tmp) {
+        tmp_key_packet = pop_keyboard();
+        if(tmp_key_packet.data == 0xF0) {
+            keycode_isBreak[tmp_key_packet.src] = 0xFF;
+        } else {
+            if(!keycode_isBreak[tmp_key_packet.src]) {
+                if(tmp_key_packet.data == SCANCODE_TAB) {
+                    if(draw_order_count > 1) {
+                        if(modifier_key_mask[tmp_key_packet.src] & (MODIFIER_L_ALT | MODIFIER_R_ALT)) {
+                            tmp_mod_code = draw_order_count-alt_tab_depth[tmp_key_packet.src];
+                            foreground_app = window_draw_order[tmp_mod_code];
+                            window_draw_order[tmp_mod_code] = window_draw_order[draw_order_count-1];
+                            window_draw_order[draw_order_count-1] = foreground_app;
+                            if(alt_tab_depth[tmp_key_packet.src] == draw_order_count) {
+                                alt_tab_depth[tmp_key_packet.src] = 2;
+                            } else {
+                                ++alt_tab_depth[tmp_key_packet.src];
+                            }
+                        }
+                    }
+                }
+            }
+            tmp_mod_code = 0;
+            switch(tmp_key_packet.data) {
+                case SCANCODE_L_ALT:
+                tmp_mod_code = MODIFIER_L_ALT;
+                break;
+                default:
+                break;
+            }
+            if(tmp_mod_code) {
+                modifier_key_mask[tmp_key_packet.src] = (~tmp_mod_code & modifier_key_mask[tmp_key_packet.src]) | (~keycode_isBreak[tmp_key_packet.src] & tmp_mod_code);
+                if(!(modifier_key_mask[tmp_key_packet.src] & (MODIFIER_L_ALT | MODIFIER_R_ALT))) {
+                    alt_tab_depth[tmp_key_packet.src] = 2;
+                }
+            }
+
+            keycode_isBreak[tmp_key_packet.src] = 0;
+        }
+        push_keyboard(tmp_key_packet);
+    }
+
     for(activeMouse = 0; activeMouse < ps2_device_count; ++activeMouse) {
         if(ps2_device_types[activeMouse] != PS2_DEVICE_TYPE_BASIC_MOUSE) {
             continue;
@@ -210,7 +282,9 @@ void desktop_update() {
         oldMouseStatus[activeMouse] = mouseStatus[activeMouse];
     }
 
-    for(current_app = 0; current_app < MAX_APPS; ++current_app) {
+    for(app_draw_index = MAX_APPS-1; app_draw_index != 255; --app_draw_index) {
+        if(window_draw_order[app_draw_index] == 0xFF) continue;
+        current_app = window_draw_order[app_draw_index];
         if(window_open[current_app]) {
             window_handler[current_app](WINDOW_EVENT_TICK);
         }
@@ -220,7 +294,9 @@ void desktop_update() {
 void desktop_early_draw() {
     queue_draw_sprite(0,0,127,127,0,0,bg_sprite);
 
-    for(current_app = 0; current_app < MAX_APPS; ++current_app) {
+   for(app_draw_index = MAX_APPS-1; app_draw_index != 255; --app_draw_index) {
+        if(window_draw_order[app_draw_index] == 0xFF) continue;
+        current_app = window_draw_order[app_draw_index];
         if(window_open[current_app]) {
             window_handler[current_app](WINDOW_EVENT_EARLY_TICK);
         }
@@ -252,7 +328,9 @@ void desktop_draw() {
 }
 
 void desktop_late_update() {
-    for(current_app = 0; current_app < MAX_APPS; ++current_app) {
+    for(app_draw_index = MAX_APPS-1; app_draw_index != 255; --app_draw_index) {
+        if(window_draw_order[app_draw_index] == 0xFF) continue;
+        current_app = window_draw_order[app_draw_index];
         if(window_open[current_app]) {
             window_handler[current_app](WINDOW_EVENT_LATE_TICK);
         }
@@ -267,4 +345,7 @@ void desktop_late_update() {
         case 5: text_edit_app_launch(); break;
     }
     app_to_launch = 0;
+
+    //Flush keyboard buffer after all app handlers done for frame
+    while(pop_keyboard().src != 255) {}
 }

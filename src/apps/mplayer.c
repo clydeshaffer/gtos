@@ -101,6 +101,8 @@ static void mplayer_app_handler(char e) {
                 ctx->change_title = 0xFF;
                 direct_prepare_sprite_ram_array_mode(my(window_sprite));
                 copyTitle(addr_for_title(ctx->track_number), TITLE_CORNER_ADDR);
+                flagsMirror |= DMA_ENABLE;
+                *dma_flags = flagsMirror;
             }
             break;
         case WINDOW_EVENT_MOUSE_CLICK:

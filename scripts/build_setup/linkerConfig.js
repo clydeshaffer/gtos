@@ -44,7 +44,7 @@ function generateLinkerConfig(assetFolderNames, extra_code_banks) {
             define : 'yes'
         },
         DATA : {
-            load : 'ROM',
+            load : 'BANKFD',
             type : 'rw',
             define : 'yes',
             run : 'RAM'

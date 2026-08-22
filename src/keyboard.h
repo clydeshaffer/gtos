@@ -7,5 +7,6 @@ void handle_led_keys(unsigned char lastRead, char index);
 
 char keyboard_buf_count();
 keyboard_packet pop_keyboard();
+char push_keyboard(keyboard_packet packet);
 
 char poll_keyboard(char index);

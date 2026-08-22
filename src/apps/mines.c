@@ -144,7 +144,8 @@ static void mines_app_handler(char e) {
                         
                     }
                 }
-                 
+                flagsMirror |= DMA_ENABLE;
+                *dma_flags = flagsMirror;
                 ctx->square_clicked = 255;
             }
 

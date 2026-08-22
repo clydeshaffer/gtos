@@ -14,6 +14,10 @@ char lastMouseRead = 0;
 
 char firstMouse = 255;
 
+char mouse_parity(char index) {
+    return byteParity[index];
+}
+
 char poll_mouse(char index) {
     ps2_select(index);
     if(ps2_data_ready()) {
@@ -43,7 +47,7 @@ char poll_mouse(char index) {
         }
 
         byteParity[index]++;
-        if(byteParity[index] == 3) byteParity[index] = 0;
+        if(byteParity[index] > 2) byteParity[index] = 0;
         return 1;
     } else {
         return 0;

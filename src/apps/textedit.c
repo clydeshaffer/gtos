@@ -52,6 +52,7 @@ static void text_edit_app_handler(char e) {
         case WINDOW_EVENT_TICK:
             break;
         case WINDOW_EVENT_LATE_TICK:
+            if(foreground_app != current_app) break; //Only take keys if focused
             direct_prepare_sprite_ram_array_mode(my(window_sprite));
             while(keyboard_buf_count()) {
                 tmp_keyb_packet = pop_keyboard();
@@ -120,6 +121,8 @@ static void text_edit_app_handler(char e) {
                     isBreak[tmp_keyb_packet.src] = 0;
                 }
             }
+            flagsMirror |= DMA_ENABLE;
+            *dma_flags = flagsMirror;
             break;
         case WINDOW_EVENT_MOUSE_CLICK:
             break;

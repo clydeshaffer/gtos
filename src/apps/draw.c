@@ -55,6 +55,8 @@ static void draw_app_handler(char e) {
                     ctx->draw_color[activeMouse] = vram[((mouse_display_y[activeMouse] - my(window_y)) << 7) + ((mouse_display_x[activeMouse] - my(window_x)) & 0x7F)];
                 }
             }
+            flagsMirror |= DMA_ENABLE;
+            *dma_flags = flagsMirror;
             break;
         case WINDOW_EVENT_MOUSE_CLICK:
             if((mouse_display_y[activeMouse] - my(window_y) > 69)) {
