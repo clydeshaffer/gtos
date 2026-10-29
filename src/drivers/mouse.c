@@ -1,5 +1,5 @@
 #include "ps2.h"
-#include "util.h"
+#include "../util.h"
 #include "mouse.h"
 
 #define MOUSE_SHIFT_BITS 2
@@ -27,6 +27,8 @@ char poll_mouse(char index) {
         mouse_display_y[index] = mouse_y[index] >> MOUSE_SHIFT_BITS;
 
         if(byteParity[index] == 0) {
+		if(lastMouseRead & 8) {
+		}
             mouseStatus[index] = lastMouseRead;
         } else if(byteParity[index] == 1) {
             mouse_rel_x = lastMouseRead;

@@ -2,7 +2,7 @@
 #include "../gt/gfx/draw_queue.h"
 #include "../gt/gfx/draw_direct.h"
 #include "../desktop.h"
-#include "../mouse.h"
+#include "../drivers/mouse.h"
 #include "../util.h"
 #include "../mem.h"
 #include "../gen/assets/gfx.h"

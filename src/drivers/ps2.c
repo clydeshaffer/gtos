@@ -1,6 +1,6 @@
-#include "gt/gametank.h"
+#include "../gt/gametank.h"
 #include "ps2.h"
-#include "util.h"
+#include "../util.h"
 #include "exbus.h"
 
 #define CLEAR_INHIBIT (1<<5)

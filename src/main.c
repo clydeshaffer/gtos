@@ -1,8 +1,8 @@
 #include "gt/gametank.h"
-#include "ps2.h"
+#include "drivers/ps2.h"
 #include "util.h"
-#include "keyboard.h"
-#include "mouse.h"
+#include "drivers/keyboard.h"
+#include "drivers/mouse.h"
 #include "desktop.h"
 #include "mem.h"
 #include "gt/gfx/draw_queue.h"
@@ -231,7 +231,7 @@ void main () {
     change_rom_bank(BANK_PROG0);
 
     mem_init();
-    
+
     ps2_init();
 
     text_init();

@@ -1,8 +1,8 @@
 #include "desktop.h"
-#include "mouse.h"
-#include "keyboard.h"
-#include "scancodes.h"
-#include "ps2.h"
+#include "drivers/mouse.h"
+#include "drivers/keyboard.h"
+#include "drivers/scancodes.h"
+#include "drivers/ps2.h"
 #include "gt/gfx/draw_queue.h"
 #include "gt/gfx/draw_direct.h"
 #include "gt/feature/random/random.h"
@@ -94,6 +94,11 @@ void remove_from_draw_order(char appslot) {
     --draw_order_count;
     if(appslot == foreground_app) {
         foreground_app = 0xFF;
+        for(app_draw_index = MAX_APPS-1; app_draw_index != 255; --app_draw_index) {
+            if(window_draw_order[app_draw_index] == 0xFF) continue;
+            foreground_app = window_draw_order[app_draw_index];
+            break;
+        }
     }
 }
 
