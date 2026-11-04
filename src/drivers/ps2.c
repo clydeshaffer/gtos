@@ -8,8 +8,8 @@
 #define READ_STROBE (1<<3)
 #define PACKET_DONE (1<<6)
 
-#define SET(bit) via[ORA] |= bit
-#define CLEAR(bit) via[ORA] &= ~bit
+#define SET(bit) via[ORA] |= (bit)
+#define CLEAR(bit) via[ORA] &= ~(bit)
 
 char ps2_device_count;
 char ps2_device_types[MAX_PS2_CARDS];
@@ -22,12 +22,12 @@ static char i;
 
 void ps2_select(char index) {
   exbus_select_device(ps2_exbus_addrs[index]);
-  EXBUS_MODE = EXBUS_DEVICE;
 
   via[DDRA] |= (CLEAR_INHIBIT | WRITE_STROBE | READ_STROBE);
   via[DDRA] &= ~PACKET_DONE;
   via[ORA] |= (CLEAR_INHIBIT | WRITE_STROBE | READ_STROBE);
   via[DDRB] = 0;
+  EXBUS_MODE = EXBUS_DEVICE;
 }
 
 char ps2_identify_device() {

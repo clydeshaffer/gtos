@@ -9,6 +9,8 @@
 #include "../mem.h"
 #include "../gen/assets/gfx.h"
 
+#include "../ui/bittext.h"
+
 #pragma code-name (push, "PROG0")
 #pragma rodata-name (push, "PROG0")
 
@@ -18,6 +20,7 @@ extern const char ps2_set2_to_upper_char[256];
 typedef struct {
 char cursor_x;
 char cursor_y;
+char scroll;
 } text_edit_app_context;
 
 static char isBreak[MAX_PS2_CARDS] = {0};
@@ -34,6 +37,8 @@ static char *cpy_src, *cpy_dst;
 
 #define TEXT_EDIT_APP_W 82
 #define TEXT_EDIT_APP_H 77
+#define TEXT_EDIT_APP_BUTTON_W 3
+#define TEXT_EDIT_APP_HEADER_H 4
 
 static char subwindow_rect_test() {
     if(!my(window_open)) return 0;
@@ -48,12 +53,58 @@ static void text_edit_app_handler(char e) {
     switch(e) {
         case WINDOW_EVENT_DRAW:
             queue_draw_sprite(my(window_x), my(window_y), TEXT_EDIT_APP_W, TEXT_EDIT_APP_H, 0, 0, my(window_sprite));
+            rect.x = my(window_x);
+            rect.y = my(window_y);
+            rect.gx = 88;
+            rect.gy = 8;
+            rect.w = TEXT_EDIT_APP_BUTTON_W;
+            rect.h = TEXT_EDIT_APP_HEADER_H;
+            rect.b = my(window_sprite);
+            queue_draw_sprite_repeat();
+            rect.x += TEXT_EDIT_APP_BUTTON_W;
+            rect.gx += 8;
+            rect.w = TEXT_EDIT_APP_W - 4;
+            rect.b = my(window_sprite);
+            queue_draw_sprite_repeat();
+            rect.x += TEXT_EDIT_APP_W - 4;
+            rect.w = 1;
+            rect.h = TEXT_EDIT_APP_H;
+            rect.gx += 17;
+            rect.gy += 8;
+            rect.b = my(window_sprite);
+            queue_draw_sprite_repeat();
+            rect.x = my(window_x);
+            rect.y = my(window_y) + TEXT_EDIT_APP_HEADER_H;
+            rect.gx -= 25;
+            rect.h = TEXT_EDIT_APP_H - TEXT_EDIT_APP_HEADER_H;
+            rect.b = my(window_sprite);
+            queue_draw_sprite_repeat();
+            rect.gx += 8;
+            rect.y += TEXT_EDIT_APP_H - TEXT_EDIT_APP_HEADER_H;
+            rect.h = 1;
+            rect.x += 1;
+            rect.w = TEXT_EDIT_APP_W - 2;
+            rect.b = my(window_sprite);
+            queue_draw_sprite_repeat();
+            rect.x = my(window_x) + 1;
+            rect.y = my(window_y) + TEXT_EDIT_APP_HEADER_H;
+            rect.w = TEXT_EDIT_APP_W - 2;
+            rect.h = (TEXT_EDIT_APP_H - (TEXT_EDIT_APP_HEADER_H + 1));
+            rect.gx = 0;
+            rect.gy = ctx->scroll;
+            rect.b = my(window_sprite);
+            queue_draw_sprite_rect();
             break;
         case WINDOW_EVENT_TICK:
+            if(ctx->scroll & 0x07) ++ctx->scroll;
             break;
         case WINDOW_EVENT_LATE_TICK:
             if(foreground_app != current_app) break; //Only take keys if focused
-            direct_prepare_sprite_ram_array_mode(my(window_sprite));
+            if(ctx->cursor_y & 128) {
+                direct_prepare_sprite_ram_array_mode(my(window_sprite) | SPRITE_OFFSET_Y_MASK);
+            } else {
+                direct_prepare_sprite_ram_array_mode(my(window_sprite));
+            }
             while(keyboard_buf_count()) {
                 tmp_keyb_packet = pop_keyboard();
                 if(tmp_keyb_packet.data == 0xF0) {
@@ -72,6 +123,10 @@ static void text_edit_app_handler(char e) {
                             if(nextChar == '\n') {
                                 ctx->cursor_x = 0;
                                 ctx->cursor_y += 8;
+                                if((ctx->cursor_y - ctx->scroll) >= 64) {
+                                    if(ctx->scroll & 7) ctx->scroll += 8;
+                                    else ++ctx->scroll;
+                                }
                             } else {
                                 tmp = 0;
                                 if(nextChar == '\b') {
@@ -81,15 +136,23 @@ static void text_edit_app_handler(char e) {
                                     } else {
                                         ctx->cursor_x -= 4;
                                     }
-                                    nextChar -= ' ';
-                                    cpy_src = &(vram[12288]);
+                                    //nextChar -= ' ';
+                                    //cpy_src = &(vram[12288]);
                                 } else {
-                                    nextChar -= ' ';
-                                    cpy_src = &(vram[12288 + (((nextChar & 0xE0) << 5)) + ((nextChar & 31) << 2)]);
+                                    //nextChar -= ' ';
+                                    //cpy_src = &(vram[12288 + (((nextChar & 0xE0) << 5)) + ((nextChar & 31) << 2)]);
                                 }
-                                cpy_dst = &(vram[(ctx->cursor_y << 7) + ctx->cursor_x+1]);                                
+                               // cpy_dst = &(vram[(ctx->cursor_y << 7) + ctx->cursor_x+1]);                                
                                 
-                                do {
+                               if(nextChar == '\b') {
+                                    bittext_set_cursor(ctx->cursor_x, ctx->cursor_y);
+                                    bittext_erase_char(7, 4);
+                               } else if(nextChar != ' ') {
+                                    bittext_set_cursor(ctx->cursor_x, ctx->cursor_y);
+                                    bittext_write_char(nextChar);
+                                }
+
+                                /*do {
                                     *cpy_dst = *cpy_src;
                                     ++cpy_dst;
                                     ++cpy_src;
@@ -99,12 +162,16 @@ static void text_edit_app_handler(char e) {
                                     }
                                     ++tmp;
                                 } while(tmp < 30);
-                                nextChar += ' ';
+                                nextChar += ' ';*/
                                 if(nextChar != '\b') {
                                     ctx->cursor_x+=4;
                                     if(ctx->cursor_x == 80) {
                                         ctx->cursor_x = 0;
                                         ctx->cursor_y += 8;
+                                        if((ctx->cursor_y - ctx->scroll) >= 64) {
+                                            if(ctx->scroll & 7) ctx->scroll += 8;
+                                            else ++ctx->scroll;
+                                        }
                                     }
                                 }
                             }
@@ -148,7 +215,8 @@ void text_edit_app_launch() {
         my(window_h) = TEXT_EDIT_APP_H;
 
         ctx->cursor_x = 0;
-        ctx->cursor_y = 4;
+        ctx->cursor_y = 0;
+        ctx->scroll = 0;
         ++text_edit_app_open_count;
     }
 }

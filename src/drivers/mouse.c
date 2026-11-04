@@ -27,9 +27,11 @@ char poll_mouse(char index) {
         mouse_display_y[index] = mouse_y[index] >> MOUSE_SHIFT_BITS;
 
         if(byteParity[index] == 0) {
-		if(lastMouseRead & 8) {
-		}
-            mouseStatus[index] = lastMouseRead;
+            if(~lastMouseRead & 8) {
+                byteParity[index] = 255;
+            } else {
+                mouseStatus[index] = lastMouseRead;
+            }
         } else if(byteParity[index] == 1) {
             mouse_rel_x = lastMouseRead;
             if(mouseStatus[index] & 16) {

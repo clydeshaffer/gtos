@@ -1,0 +1,72 @@
+#include "bittext.h"
+#include "font.h"
+
+#pragma code-name (push, "PROG0")
+#pragma rodata-name (push, "PROG0")
+
+pointer_t bittext_dest_u;
+char bittext_color = 32;
+
+#define dest_bytes bittext_dest_u.b
+
+void bittext_write_char(char c) {
+    char i, pat;
+    int c_idx;
+    c_idx = c - ' ';
+    c_idx <<= 2;
+    i = 1;
+    if(c & 128) i = 0;
+    for(; i < 5; ++i) {
+        pat = system_font_monochrome[c_idx];
+        if(pat & 1) *bittext_dest = bittext_color;
+        ++dest_bytes.msb;
+        if(pat & 4) *bittext_dest = bittext_color;
+        ++dest_bytes.msb;
+        if(pat & 16) *bittext_dest = bittext_color;
+        ++dest_bytes.msb;
+        if(pat & 64) *bittext_dest = bittext_color;
+        dest_bytes.msb -= 3;
+        bittext_dest += 128; 
+        if(pat & 2) *bittext_dest = bittext_color;
+        ++dest_bytes.msb;
+        if(pat & 8) *bittext_dest = bittext_color;
+        ++dest_bytes.msb;
+        if(pat & 32) *bittext_dest = bittext_color;
+        ++dest_bytes.msb;
+        if(pat & 128) *bittext_dest = bittext_color;
+        bittext_dest -= 895;
+        ++c_idx;
+    }
+}
+
+void bittext_erase_char(char color, char w) {
+    char i,  c, ww;
+    ww = w;
+    c = color;
+    for(i=0; i < ww; ++i) {
+        *bittext_dest = c;
+        ++dest_bytes.msb;
+        *bittext_dest = c;
+        ++dest_bytes.msb;
+        *bittext_dest = c;
+        ++dest_bytes.msb;
+        *bittext_dest = c;
+        dest_bytes.msb -= 3;
+        bittext_dest += 128; 
+        *bittext_dest = c;
+        ++dest_bytes.msb;
+        *bittext_dest = c;
+        ++dest_bytes.msb;
+        *bittext_dest = c;
+        ++dest_bytes.msb;
+        *bittext_dest = c;
+        bittext_dest -= 895;
+    }
+}
+
+
+void bittext_set_cursor(char x, char y) {
+    dest_bytes.msb = 0x40 | (y >> 1);
+    dest_bytes.lsb = x & 0x7F;
+    if(y & 128) dest_bytes.lsb |= 128;
+}

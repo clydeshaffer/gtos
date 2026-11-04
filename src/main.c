@@ -1,5 +1,7 @@
 #include "gt/gametank.h"
 #include "drivers/ps2.h"
+#include "drivers/ch37x_usb.h"
+#include "drivers/exbus.h"
 #include "util.h"
 #include "drivers/keyboard.h"
 #include "drivers/mouse.h"
@@ -13,6 +15,7 @@
 #include "gen/bank_nums.h"
 
 static char tmp = 0;
+char usb_storage_device;
 
 SpriteSlot text_sprite;
 
@@ -36,6 +39,10 @@ char anyDeviceUpdated = 0;
 char old_text_x, old_text_y;
 char resb;
 char doubleclear = 0;
+
+extern char ch37x_init_called;
+extern char ch37x_debug;
+extern char ch37x_last_cmd;
 
 #pragma code-name (push, "PROG0")
 
@@ -83,9 +90,13 @@ void mainloop_keyboard () {
         
         printbuf_len = 0;
 
-        while(poll_keyboard(0)) {
-            delayMicroseconds(255);
-            delayMicroseconds(255);
+        ch376_poll(usb_storage_device);
+ 
+        if(ps2_device_count) {
+            while(poll_keyboard(0)) {
+                delayMicroseconds(255);
+                delayMicroseconds(255);
+            }
         }
 
        /* while(keyboard_buf_count()) {
@@ -197,7 +208,7 @@ void mainloop_mouse() {
     while(1) {
 
         desktop_early_draw();
-
+        ch376_poll(usb_storage_device);
         frameflag = 1;
         do {
             anyDeviceUpdated = 0;
@@ -234,10 +245,19 @@ void main () {
 
     ps2_init();
 
+    usb_storage_device = ch376_init();
+
     text_init();
     text_sprite = text_load_font();
     text_cursor_y = 16;
     text_color = TEXT_COLOR_WHITE;
+
+    debug_buf_idx = 0;
+    debug_buf[0] = 0;
+
+    print_hex_to_debug_buf(exbus_query_device(0));
+    print_hex_to_debug_buf(ch37x_init_called);
+    print_hex_to_debug_buf(ch37x_debug);
 
     text_print_string("GTOS v0.1\n\rReady\n\r");
     text_print_string(debug_buf);
@@ -254,8 +274,6 @@ void main () {
     await_vsync(1);
     flip_pages();
 
-    debug_buf_idx = 0;
-    debug_buf[0] = 0;
 
     for(tmp = 0; tmp < ps2_device_count; ++tmp) {
         

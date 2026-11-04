@@ -13,6 +13,7 @@ extern unsigned char queue_flags_param; //defined in draw_util.s
 
 void queue_draw_box(unsigned char x, unsigned char y, unsigned char w, unsigned char h, unsigned char c);
 void queue_draw_sprite_rect();
+void queue_draw_sprite_repeat();
 
 #define queue_draw_sprite(X,Y,W,H,GX,GY,SPRITESLOT) rect.x=X;rect.y=Y;rect.w=W;rect.h=H;rect.gx=GX;rect.gy=GY;rect.b=SPRITESLOT;queue_draw_sprite_rect();
 void queue_draw_sprite_frame(SpriteSlot sprite, char x, char y, char frame, char flip);

@@ -11,7 +11,6 @@ unsigned char queue_start = 0;
 unsigned char queue_end = 0;
 unsigned char queue_count = 0;
 unsigned char queue_pending = 0;
-
 void queue_draw_sprite_rect() {
     if(queue_count >= QUEUE_MAX) {
         asm("CLI");
@@ -23,6 +22,25 @@ void queue_draw_sprite_rect() {
     if(rect.b & SPRITE_OFFSET_Y_MASK) { rect.gy |= 128; }
     rect.b = (rect.b & BANK_GRAM_MASK) | bankflip | CLIP_MODE_XY;
     queue_flags_param = DMA_GCARRY;
+    pushRect();
+
+    if(queue_pending == 0) {
+        next_draw_queue();
+    }
+    asm("CLI");
+}
+
+void queue_draw_sprite_repeat() {
+    if(queue_count >= QUEUE_MAX) {
+        asm("CLI");
+        await_drawing();
+    }
+
+    asm("SEI");
+    if(rect.b & SPRITE_OFFSET_X_MASK) { rect.gx |= 128; }
+    if(rect.b & SPRITE_OFFSET_Y_MASK) { rect.gy |= 128; }
+    rect.b = (rect.b & BANK_GRAM_MASK) | bankflip | CLIP_MODE_XY;
+    queue_flags_param = 0;
     pushRect();
 
     if(queue_pending == 0) {

@@ -14,6 +14,7 @@
 #include "apps/mines.h"
 #include "apps/mplayer.h"
 #include "apps/textedit.h"
+#include "apps/fsbrowse.h"
 
 #include "gen/assets/gfx/icons.json.h"
 
@@ -30,7 +31,7 @@ char icons_f[MAX_ICONS] = {
     ICONS_TAG_MUSIC_START
 };
 
-char icons_app[MAX_ICONS] = {0, 0, 2, 5, 1, 3, 4};
+char icons_app[MAX_ICONS] = {0, 6, 2, 5, 1, 3, 4};
 
 #define MODIFIER_R_ALT 1
 #define MODIFIER_L_ALT 2
@@ -71,6 +72,7 @@ SpriteSlot window_sprite[MAX_APPS];
 char window_to_bump = 0xFF;
 char window_to_close = 0xFF;
 char activeMouse;
+char desktop_ticks = 0;
 
 void (*window_handler[MAX_APPS]) (char);
 static char tmp = 0;
@@ -308,10 +310,20 @@ void desktop_early_draw() {
     }
 }
 
+extern char ch37x_plugged_in_device;
+
 void desktop_draw() {
     for(tmp = 0; tmp < MAX_ICONS; ++tmp) {
         if(icons_f[tmp]) {
             queue_draw_sprite_frame(icons_sprite, icons_x[tmp], icons_y[tmp], icons_f[tmp], 0);
+        }
+    }
+
+    if(ch37x_plugged_in_device == 2) {
+        queue_draw_sprite_frame(icons_sprite, 12, 12, ICONS_TAG_FOLDER_START, 0);
+    } else if(ch37x_plugged_in_device == 1) {
+        if(desktop_ticks & 1) {
+            queue_draw_sprite_frame(icons_sprite, 12, 12, ICONS_TAG_FOLDER_START, 0);
         }
     }
 
@@ -348,9 +360,11 @@ void desktop_late_update() {
         case 3: mines_app_launch(); break;
         case 4: mplayer_app_launch(); break;
         case 5: text_edit_app_launch(); break;
+        case 6: fs_browse_app_launch(); break;
     }
     app_to_launch = 0;
 
     //Flush keyboard buffer after all app handlers done for frame
     while(pop_keyboard().src != 255) {}
+    ++desktop_ticks;
 }

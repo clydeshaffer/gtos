@@ -1,4 +1,4 @@
-#define HEAP_SIZE 512
+#define HEAP_SIZE 2048
 static char heap[HEAP_SIZE];
 
 

@@ -105,10 +105,14 @@ SYMBOLS {
 }
 `;
 
-    const names2 = ['COMMON', ...assetFolderNames];
+    const names2 = ['COMMON', ...assetFolderNames].filter(name => (section_SEGMENTS[name] == undefined));
     const asset_banks = names2.length;
     const bankNames = [];
     const bankNums = [];
+
+    folderBankMap['RODATA'] = 0xFF;
+    folderBankMap['DATA'] = 0xFF;
+    folderBankMap['CODE'] = 0xFF;
 
     for(var i = 0; i < asset_banks; i++) {
         const bankNum = i + 128;
