@@ -1,6 +1,7 @@
 #include "ps2.h"
 #include "../util.h"
 #include "mouse.h"
+#include "exbus.h"
 
 #define MOUSE_SHIFT_BITS 2
 char mouse_display_x[MAX_MICE] = {64}, mouse_display_y[MAX_MICE] = {64};
@@ -22,13 +23,14 @@ char poll_mouse(char index) {
     ps2_select(index);
     if(ps2_data_ready()) {
         lastMouseRead = read_byte();
-
+        EXBUS_MODE = EXBUS_IGNORE;
         mouse_display_x[index] = mouse_x[index] >> MOUSE_SHIFT_BITS;
         mouse_display_y[index] = mouse_y[index] >> MOUSE_SHIFT_BITS;
 
         if(byteParity[index] == 0) {
             if(~lastMouseRead & 8) {
-                byteParity[index] = 255;
+                byteParity[index] = 0;
+                return 0;
             } else {
                 mouseStatus[index] = lastMouseRead;
             }
@@ -54,6 +56,7 @@ char poll_mouse(char index) {
         if(byteParity[index] > 2) byteParity[index] = 0;
         return 1;
     } else {
+        EXBUS_MODE = EXBUS_IGNORE;
         return 0;
     }
 }

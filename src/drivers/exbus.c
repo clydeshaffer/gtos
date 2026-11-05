@@ -2,8 +2,12 @@
 #include "exbus.h"
 
 void exbus_select_device(char addr) {
-    EXBUS_MODE = EXBUS_SELECT;
+    EXBUS_MODE = EXBUS_IGNORE;
     via[DDRB] = 0xFF;
+    via[ORB] = 0;
+    via[DDRA] &= 0b10000111;
+    via[ORA] &= 0b10000111;
+    EXBUS_MODE = EXBUS_SELECT;
     via[ORB] = addr;
     EXBUS_MODE = EXBUS_IGNORE;
     via[DDRB] = 0;

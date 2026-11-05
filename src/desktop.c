@@ -5,9 +5,11 @@
 #include "drivers/ps2.h"
 #include "gt/gfx/draw_queue.h"
 #include "gt/gfx/draw_direct.h"
+#include "gt/banking.h"
 #include "gt/feature/random/random.h"
 #include "util.h"
 #include "gen/assets/gfx.h"
+#include "gen/bank_nums.h"
 
 #include "apps/draw.h"
 #include "apps/spikeball.h"
@@ -32,6 +34,7 @@ char icons_f[MAX_ICONS] = {
 };
 
 char icons_app[MAX_ICONS] = {0, 6, 2, 5, 1, 3, 4};
+char icons_app_bank[MAX_ICONS] = {0, BANK_PROG0, BANK_PROG1, BANK_PROG0, BANK_PROG0, BANK_PROG0, BANK_PROG0 };
 
 #define MODIFIER_R_ALT 1
 #define MODIFIER_L_ALT 2
@@ -54,6 +57,7 @@ SpriteSlot bg_sprite;
 SpriteSlot icons_sprite;
 
 char app_to_launch = 0;
+char launch_bank = 0;
 char current_app;
 char app_draw_index;
 char draw_order_count = 0;
@@ -74,10 +78,18 @@ char window_to_close = 0xFF;
 char activeMouse;
 char desktop_ticks = 0;
 
-void (*window_handler[MAX_APPS]) (char);
+void (*window_handler[MAX_APPS]) (char); 
+char window_bank[MAX_APPS];
 static char tmp = 0;
 
 static keyboard_packet tmp_key_packet;
+
+void call_app_handler(char evt_type) {
+    push_rom_bank();
+    change_rom_bank(window_bank[current_app]);
+    window_handler[current_app](evt_type);
+    pop_rom_bank();
+}
 
 void remove_from_draw_order(char appslot) {
     static char hit;
@@ -137,6 +149,7 @@ char desktop_launch_app(void(*handler)(char)) {
         if(!window_open[current_app]) {
             window_open[current_app] = 1;
             window_handler[current_app] = handler;
+            window_bank[current_app] = launch_bank;
             for(app_draw_index = 0; app_draw_index < MAX_APPS; ++app_draw_index) {
                 if(window_draw_order[app_draw_index] == 0xFF) {
                     window_draw_order[app_draw_index] = current_app;
@@ -210,7 +223,7 @@ void desktop_update() {
                 if(window_rect_test(current_app)) {
                     if(u(mouse_display_y[activeMouse] - window_y[current_app]) < 4) {
                         if(u(mouse_display_x[activeMouse] - window_x[current_app]) < 3) {
-                            window_handler[current_app](WINDOW_EVENT_EXIT);
+                            call_app_handler(WINDOW_EVENT_EXIT);
                             window_open[current_app] = 0;
                             window_to_close = current_app;
                         } else {
@@ -224,9 +237,9 @@ void desktop_update() {
                         window_to_bump = current_app;
                         last_window_clicked = current_app;
                         if(mouseStatus[activeMouse] & (~(oldMouseStatus[activeMouse])) & 1)
-                            window_handler[current_app](WINDOW_EVENT_MOUSE_CLICK);
+                            call_app_handler(WINDOW_EVENT_MOUSE_CLICK);
                         if(mouseStatus[activeMouse] & (~(oldMouseStatus[activeMouse]) & 2))
-                            window_handler[current_app](WINDOW_EVENT_RIGHT_CLICK);
+                            call_app_handler(WINDOW_EVENT_RIGHT_CLICK);
                     }
                     break;
                 }
@@ -239,6 +252,7 @@ void desktop_update() {
                             if(cabs(icons_y[tmp] - mouse_display_y[activeMouse]) < 8) {
                                 if(icons_app[tmp] && (frames_since_click[activeMouse] < 15)) {
                                     app_to_launch = icons_app[tmp];
+                                    launch_bank = icons_app_bank[tmp];
                                     break;
                                 } else {
                                     dragging_index[activeMouse] = tmp;
@@ -293,7 +307,7 @@ void desktop_update() {
         if(window_draw_order[app_draw_index] == 0xFF) continue;
         current_app = window_draw_order[app_draw_index];
         if(window_open[current_app]) {
-            window_handler[current_app](WINDOW_EVENT_TICK);
+            call_app_handler(WINDOW_EVENT_TICK);
         }
     }
 }
@@ -305,7 +319,7 @@ void desktop_early_draw() {
         if(window_draw_order[app_draw_index] == 0xFF) continue;
         current_app = window_draw_order[app_draw_index];
         if(window_open[current_app]) {
-            window_handler[current_app](WINDOW_EVENT_EARLY_TICK);
+            call_app_handler(WINDOW_EVENT_EARLY_TICK);
         }
     }
 }
@@ -331,7 +345,7 @@ void desktop_draw() {
         if(window_draw_order[app_draw_index] == 0xFF) continue;
         current_app = window_draw_order[app_draw_index];
         if(window_open[current_app]) {
-            window_handler[current_app](WINDOW_EVENT_DRAW);
+            call_app_handler(WINDOW_EVENT_DRAW);
         }
     }
 
@@ -349,20 +363,25 @@ void desktop_late_update() {
         if(window_draw_order[app_draw_index] == 0xFF) continue;
         current_app = window_draw_order[app_draw_index];
         if(window_open[current_app]) {
-            window_handler[current_app](WINDOW_EVENT_LATE_TICK);
+            call_app_handler(WINDOW_EVENT_LATE_TICK);
         }
     }
 
-    switch(app_to_launch) {
-        case 0: break;
-        case 1: draw_app_launch(); break;
-        case 2: spike_app_launch(); break;
-        case 3: mines_app_launch(); break;
-        case 4: mplayer_app_launch(); break;
-        case 5: text_edit_app_launch(); break;
-        case 6: fs_browse_app_launch(); break;
+    if(app_to_launch) {
+        push_rom_bank();
+        change_rom_bank(launch_bank);
+        switch(app_to_launch) {
+            case 0: break;
+            case 1: draw_app_launch(); break;
+            case 2: spike_app_launch(); break;
+            case 3: mines_app_launch(); break;
+            case 4: mplayer_app_launch(); break;
+            case 5: text_edit_app_launch(); break;
+            case 6: fs_browse_app_launch(); break;
+        }
+        pop_rom_bank();
+        app_to_launch = 0;
     }
-    app_to_launch = 0;
 
     //Flush keyboard buffer after all app handlers done for frame
     while(pop_keyboard().src != 255) {}

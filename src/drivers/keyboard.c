@@ -1,5 +1,6 @@
 #include "ps2.h"
 #include "keyboard.h"
+#include "exbus.h"
 
 char ledMask[MAX_PS2_CARDS] = {0};
 char oldLedMask[MAX_PS2_CARDS] = {0};
@@ -94,8 +95,10 @@ char poll_keyboard(char index) {
         ++keystroke_head;
         keystroke_head &= (KEY_BUF_MAX-1);
         ++keystroke_count;
+        EXBUS_MODE = EXBUS_IGNORE;
         return 1;
     } else {
+        EXBUS_MODE = EXBUS_IGNORE;
         return 0;
     }
 }

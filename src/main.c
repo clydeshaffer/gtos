@@ -13,9 +13,9 @@
 #include "gt/gfx/sprites.h"
 #include "banking.h"
 #include "gen/bank_nums.h"
+#include "drivers/fs.h"
 
 static char tmp = 0;
-char usb_storage_device;
 
 SpriteSlot text_sprite;
 
@@ -199,7 +199,7 @@ void mainloop_keyboard () {
  
     }
 }
-#pragma code-name(pop)
+
 
 void mainloop_mouse() {
 
@@ -208,8 +208,12 @@ void mainloop_mouse() {
     while(1) {
 
         desktop_early_draw();
+
+        __asm__("SEI");
         ch376_poll(usb_storage_device);
+         __asm__("CLI");
         frameflag = 1;
+        __asm__("SEI");
         do {
             anyDeviceUpdated = 0;
             for(tmp = 0; tmp < ps2_device_count; ++tmp) {
@@ -228,6 +232,7 @@ void mainloop_mouse() {
             //got here if a mouse lagged out off alignment or too many messages came
             frameflag = 0;
         }
+        __asm__("CLI");
 
         desktop_update();
         desktop_draw();
@@ -237,7 +242,7 @@ void mainloop_mouse() {
         flip_pages();
     }
 }
-
+#pragma code-name(pop)
 void main () {
     change_rom_bank(BANK_PROG0);
 
@@ -276,15 +281,9 @@ void main () {
 
 
     for(tmp = 0; tmp < ps2_device_count; ++tmp) {
-        
         if(ps2_device_types[tmp] == PS2_DEVICE_TYPE_BASIC_MOUSE) {
             firstMouse = tmp;
-            text_print_string("M");
             break;
-        } else if(ps2_device_types[tmp] == PS2_DEVICE_TYPE_BASIC_KEYBOARD) {
-            text_print_string("K");
-        } else {
-            text_print_string("X");
         }
     }
 

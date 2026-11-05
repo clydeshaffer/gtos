@@ -20,6 +20,7 @@ char ch37x_read_buffer[64];
 char ch37x_read_buffer_count = 0;
 char ch37x_read_event_index;
 char ch37x_last_int_status;
+char ch37x_prev_cmd = 0;
 
 void ch37x_select(char exbus_addr) {
     exbus_select_device(exbus_addr);
@@ -76,6 +77,14 @@ char ch37x_poll_for_int() {
     return 0xFF;
 }
 
+ char ch37x_wait_for_int() {
+    ch37x_last_int_status = 0xFF;
+    while(ch37x_last_int_status == 0xFF) {
+        ch37x_last_int_status = ch37x_poll_for_int();
+    }
+    return ch37x_last_int_status;
+ }
+
 void ch37x_set_usb_mode(char mode) {
     ch37x_write_cmd(CH375_CMD_SET_USB_MODE);
     ch37x_write_data(mode);
@@ -106,13 +115,18 @@ found_ch376:
     return exbus_addr;
 }
 
+#pragma code-name (push, "PROG0")
+
 void ch376_poll(char exbus_addr) {
-    char int_status, last_cmd, i;
+    char int_status, i;
     if(!ch37x_init_called) return;
     ch37x_select(exbus_addr);
-    last_cmd = ch37x_last_cmd;
+    ch37x_prev_cmd = ch37x_last_cmd;
     int_status = ch37x_poll_for_int();
-    if(int_status == 0xFF) return;
+    if(int_status == 0xFF) {
+        EXBUS_MODE = EXBUS_IGNORE;
+        return;
+    }
     ch37x_last_int_status = int_status;
     switch(int_status) {
         case CH37X_USB_INT_CONNECT:
@@ -127,7 +141,8 @@ void ch376_poll(char exbus_addr) {
         ch37x_set_usb_mode(0x05);
         break;
         case CH37X_USB_INT_SUCCESS:
-        if(last_cmd == CH376_CMD_DISK_MOUNT) {
+        ++ch37x_read_event_index;
+        if(ch37x_prev_cmd == CH376_CMD_DISK_MOUNT) {
             ch37x_plugged_in_device = 2;
         }
         break;
@@ -142,11 +157,15 @@ void ch376_poll(char exbus_addr) {
         case CH37X_USB_INT_DISK_WRITE:
         break;
         case CH37X_USB_INT_DISK_ERR:
-        if(last_cmd == CH376_CMD_DISK_MOUNT) {
+        if(ch37x_prev_cmd == CH376_CMD_DISK_MOUNT) {
             ch37x_write_cmd(CH376_CMD_DISK_MOUNT);
         }
+        break;
+        case CH37X_ERR_MISS_FILE:
+        ++ch37x_read_event_index;
         break;
         default:
         break;
     }
+    EXBUS_MODE = EXBUS_IGNORE;
 }

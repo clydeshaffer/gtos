@@ -7,8 +7,8 @@
 #include "../mem.h"
 #include "../gen/assets/gfx.h"
 
-#pragma code-name (push, "PROG0")
-#pragma rodata-name (push, "PROG0")
+#pragma code-name (push, "PROG1")
+#pragma rodata-name (push, "PROG1")
 
 typedef struct {
 char dx, dy;

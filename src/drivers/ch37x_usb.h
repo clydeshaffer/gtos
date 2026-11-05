@@ -79,6 +79,7 @@
 #define CH37X_USB_INT_DISK_ERR 0x1F
 
 #define CH37X_ERR_OPEN_DIR 0x41
+#define CH37X_ERR_MISS_FILE 0x42
 
 extern char ch37x_last_cmd;
 extern char ch37x_ready;
@@ -89,6 +90,7 @@ extern char ch37x_read_buffer[64];
 extern char ch37x_read_buffer_count;
 extern char ch37x_read_event_index;
 extern char ch37x_last_int_status;
+extern char ch37x_prev_cmd;
 
 char ch376_init();
 
@@ -107,5 +109,6 @@ char ch37x_read_status();
 char ch37x_read_data();
 
 char ch37x_poll_for_int();
+char ch37x_wait_for_int();
 
 #endif

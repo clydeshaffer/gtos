@@ -1,7 +1,7 @@
 {
     "title" : "My GameTank Game",
     "romname" : "game.gtr",
-    "progbanks" : 1,
+    "progbanks" : 2,
     "modules" : [
         "PERSIST",
         "RANDOM",

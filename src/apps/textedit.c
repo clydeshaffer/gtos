@@ -146,7 +146,7 @@ static void text_edit_app_handler(char e) {
                                 
                                if(nextChar == '\b') {
                                     bittext_set_cursor(ctx->cursor_x, ctx->cursor_y);
-                                    bittext_erase_char(7, 4);
+                                    bittext_erase_char();
                                } else if(nextChar != ' ') {
                                     bittext_set_cursor(ctx->cursor_x, ctx->cursor_y);
                                     bittext_write_char(nextChar);
