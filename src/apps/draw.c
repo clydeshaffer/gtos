@@ -16,8 +16,10 @@
 #define PENDING_ACTION_SAVE 1
 #define PENDING_ACTION_SAVE_NAME_ENTRY 2
 #define PENDING_ACTION_SAVE_NAME_CLEAR 3
+#define PENDING_ACTION_PRINT_TOOL_NAME 4
 
 #pragma rodata-name (push, "PROG1")
+
 
 const unsigned char bmpHeader[1078] = {
 	0x42, 0x4D, 0x36, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x36, 0x04,
@@ -115,11 +117,18 @@ const unsigned char bmpHeader[1078] = {
 #pragma code-name (push, "PROG0")
 #pragma rodata-name (push, "PROG0")
 
+#define TOOL_PEN 0
+#define TOOL_BUCKET 1
+
 typedef struct {
 char draw_color[MAX_PS2_CARDS];
 char pending_action;
 char name_buf[13];
 char name_cursor;
+char last_x[MAX_PS2_CARDS];
+char last_y[MAX_PS2_CARDS];
+char tool[MAX_PS2_CARDS];
+char pending_param;
 } draw_app_context;
 
 #define ctx ((draw_app_context*)my(window_context))
@@ -131,11 +140,79 @@ char draw_app_open_count = 0;
 #define DRAW_APP_W 66
 #define DRAW_APP_H 85
 
+#define DRAW_BOUND_LEFT 1
+#define DRAW_BOUND_RIGHT 65
+#define DRAW_BOUND_TOP 4
+#define DRAW_BOUND_BOTTOM 68
+
+#define FILLSTACKSIZE 128
+#define FILLSTACKIDX vram[16384-((2*FILLSTACKSIZE)+1)]
+#define FILLSTACK_X (vram+16384-(FILLSTACKSIZE*2))
+#define FILLSTACK_Y (vram+16384-FILLSTACKSIZE)
+
+#define INIT_FILLSTACK FILLSTACKIDX=0
+#define PUSH_FILLSTACK(x, y) if(FILLSTACKIDX < FILLSTACKSIZE) { FILLSTACK_X[FILLSTACKIDX]=x;FILLSTACK_Y[FILLSTACKIDX]=y; FILLSTACKIDX++; }
+#define POP_FILLSTACK(x, y) --FILLSTACKIDX; x=FILLSTACK_X[FILLSTACKIDX]; y=FILLSTACK_Y[FILLSTACKIDX];
+//Lode's flood fill https://lodev.org/cgtutor/floodfill.html#Scanline_Floodfill_Algorithm_With_Stack
+//Adapted for C/GameTank
+void floodFillScanlineStack(char x, char y, char newColor, char oldColor)
+{
+    char x1;
+    char spanAbove, spanBelow;
+    if(oldColor == newColor) return;
+
+    INIT_FILLSTACK;
+    PUSH_FILLSTACK(x, y);
+    while(FILLSTACKIDX) {
+        POP_FILLSTACK(x, y);
+        x1 = x;
+        while((x1 >= DRAW_BOUND_LEFT) && vram[(y << 7) + x1] == oldColor) x1--;
+        x1++;
+        spanAbove = spanBelow = 0;
+        while((x1 < DRAW_BOUND_RIGHT) && vram[(y << 7) + x1] == oldColor) {
+            vram[(y << 7) + x1] = newColor;
+            if(!spanAbove && (y > DRAW_BOUND_TOP) && vram[((y - 1) << 7) + x1] == oldColor) {
+            PUSH_FILLSTACK(x1, y-1);
+            spanAbove = 1;
+            } else if(spanAbove && (y > DRAW_BOUND_TOP) && vram[((y - 1) << 7) + x1] != oldColor) {
+            spanAbove = 0;
+            }
+            if(!spanBelow && (y < DRAW_BOUND_BOTTOM) && vram[((y + 1) << 7) + x1] == oldColor) {
+            PUSH_FILLSTACK(x1, y+1);
+            spanBelow = 1;
+            } else if(spanBelow && (y < DRAW_BOUND_BOTTOM) && vram[((y + 1) << 7) + x1] != oldColor) {
+            spanBelow = 0;
+            }
+            x1++;
+        }
+    }
+}
+
+signed char scabs(signed char x){
+    if(x < 0) return -x;
+    return x;
+}
+
+void plot_line (signed char x0, signed char y0, signed char x1, signed char y1)
+{
+  signed char dx =  scabs (x1 - x0), sx = x0 < x1 ? 1 : -1;
+  signed char dy = -scabs (y1 - y0), sy = y0 < y1 ? 1 : -1; 
+  signed char err = dx + dy, e2; /* error value e_xy */
+ 
+  for (;;){  /* loop */
+    vram[((y0) << 7) + ((x0) & 0x7F)] = ctx->draw_color[activeMouse];
+    if (x0 == x1 && y0 == y1) break;
+    e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; } /* e_xy+e_x > 0 */
+    if (e2 <= dx) { err += dx; y0 += sy; } /* e_xy+e_y < 0 */
+  }
+}
+
 static char subwindow_rect_test() {
     if(!my(window_open)) return 0;
 
     if(u(mouse_display_x[activeMouse] - (my(window_x)+1)) > u(my(window_w)-2)) return 0;
-    if(u(mouse_display_y[activeMouse] - (my(window_y)+4)) > u(my(window_h)-11)) return 0;
+    if(u(mouse_display_y[activeMouse] - (my(window_y)+4)) > u(my(window_h)-20)) return 0;
 
     return 1;
 }
@@ -151,7 +228,18 @@ static void draw_app_handler(char e) {
             break;
         case WINDOW_EVENT_LATE_TICK:
             direct_prepare_sprite_ram_array_mode(my(window_sprite));
-            if(ctx->pending_action == PENDING_ACTION_SAVE_NAME_CLEAR) {
+            if(ctx->pending_action == PENDING_ACTION_PRINT_TOOL_NAME) {
+                ctx->pending_action = PENDING_ACTION_NONE;
+                ctx->pending_action = PENDING_ACTION_NONE;
+                bittext_set_cursor(1, 76);
+                bittext_bg = 5;
+                bittext_color = 3;
+                if(ctx->pending_param == TOOL_PEN) {
+                    bittext_write_str_opaque("PEN Selected ");
+                } else if(ctx->pending_param == TOOL_BUCKET) {
+                    bittext_write_str_opaque("FILL Selected");
+                }
+            } else if(ctx->pending_action == PENDING_ACTION_SAVE_NAME_CLEAR) {
                 for(i = 0; i < 8; ++i) {
                     ctx->name_buf[i] = ' ';
                 }
@@ -199,7 +287,18 @@ static void draw_app_handler(char e) {
                     if(ps2_device_types[activeMouse] != PS2_DEVICE_TYPE_BASIC_MOUSE) continue;
                     if(drag_in_window[activeMouse] == current_app) {
                         if(subwindow_rect_test()) {
-                            vram[((mouse_display_y[activeMouse] - my(window_y)) << 7) + ((mouse_display_x[activeMouse] - my(window_x)) & 0x7F)] = ctx->draw_color[activeMouse];
+                            if(ctx->tool[activeMouse] == TOOL_BUCKET) {
+                                floodFillScanlineStack(mouse_display_x[activeMouse] - my(window_x), mouse_display_y[activeMouse] - my(window_y), ctx->draw_color[activeMouse], vram[((mouse_display_y[activeMouse] - my(window_y)) << 7) + ((mouse_display_x[activeMouse] - my(window_x)) & 0x7F)]);
+                                drag_in_window[activeMouse] = 0xFF;
+                            } else {
+                                if(ctx->last_x[activeMouse] == 255) {
+                                    vram[((mouse_display_y[activeMouse] - my(window_y)) << 7) + ((mouse_display_x[activeMouse] - my(window_x)) & 0x7F)] = ctx->draw_color[activeMouse];
+                                } else {
+                                    plot_line(ctx->last_x[activeMouse], ctx->last_y[activeMouse], mouse_display_x[activeMouse] - my(window_x), mouse_display_y[activeMouse] - my(window_y));
+                                }
+                                ctx->last_x[activeMouse] = mouse_display_x[activeMouse] - my(window_x);
+                                ctx->last_y[activeMouse] = mouse_display_y[activeMouse] - my(window_y);
+                            }
                         }
                     }
                     if(sample_pixel[activeMouse] == current_app) {
@@ -214,11 +313,20 @@ static void draw_app_handler(char e) {
         case WINDOW_EVENT_MOUSE_CLICK:
             if(ctx->pending_action == PENDING_ACTION_NONE) {
                 if((mouse_display_y[activeMouse] - my(window_y) > 69)) {
-                    if((mouse_display_x[activeMouse] - my(window_x) > 54)) {
-                        ctx->pending_action = PENDING_ACTION_SAVE_NAME_CLEAR;
-                        
-                    } else {
-                        sample_pixel[activeMouse] = current_app;
+                    if((mouse_display_y[activeMouse] - my(window_y) < 75)) {
+                        if((mouse_display_x[activeMouse] - my(window_x) > 54)) {
+                            ctx->pending_action = PENDING_ACTION_SAVE_NAME_CLEAR;
+                        } else if ((mouse_display_x[activeMouse] - my(window_x) > 47)) {
+                            ctx->pending_action = PENDING_ACTION_PRINT_TOOL_NAME;
+                            ctx->pending_param = TOOL_BUCKET;
+                            ctx->tool[activeMouse] = TOOL_BUCKET;
+                        } else if ((mouse_display_x[activeMouse] - my(window_x) > 40)) {
+                            ctx->pending_action = PENDING_ACTION_PRINT_TOOL_NAME;
+                            ctx->pending_param = TOOL_PEN;
+                            ctx->tool[activeMouse] = TOOL_PEN;
+                        } else {
+                            sample_pixel[activeMouse] = current_app;
+                        }
                     }
                 } else {
                     drag_in_window[activeMouse] = current_app;
@@ -226,6 +334,7 @@ static void draw_app_handler(char e) {
             }
             break;
         case WINDOW_EVENT_MOUSE_RELEASE:
+            ctx->last_x[activeMouse] = 0xFF;
             drag_in_window[activeMouse] = 0xFF;
             break;
         case WINDOW_EVENT_EXIT:
@@ -255,6 +364,8 @@ void draw_app_launch() {
 
         for(activeMouse = 0; activeMouse < ps2_device_count; ++activeMouse) {
             ctx->draw_color[activeMouse] = 32;
+            ctx->tool[activeMouse] = TOOL_PEN;
+            drag_in_window[activeMouse] = 0xFF;
         }
         ++draw_app_open_count;
     }

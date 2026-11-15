@@ -20,10 +20,13 @@ extern const char ps2_set2_to_char[256];
 extern const char ps2_set2_to_upper_char[256];
 extern char usb_storage_device;
 
+#define DIR_CACHE_LINES 32
+#define DIR_ENTRY_SIZE 16
+
 typedef struct {
 char last_usb_event;
 char cursor_y;
-char dir_cache[512];
+char dir_cache[DIR_CACHE_LINES * DIR_ENTRY_SIZE];
 char dir_cache_i;
 char dir_cache_count; 
 char dir_cache_count_stale;

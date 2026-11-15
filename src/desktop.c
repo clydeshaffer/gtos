@@ -34,7 +34,7 @@ char icons_f[MAX_ICONS] = {
 };
 
 char icons_app[MAX_ICONS] = {0, 6, 2, 5, 1, 3, 4};
-char icons_app_bank[MAX_ICONS] = {0, BANK_PROG0, BANK_PROG1, BANK_PROG0, BANK_PROG0, BANK_PROG0, BANK_PROG0 };
+char icons_app_bank[MAX_ICONS] = {0, BANK_PROG0, BANK_PROG1, BANK_PROG0, BANK_PROG0, BANK_PROG1, BANK_PROG0 };
 
 #define MODIFIER_R_ALT 1
 #define MODIFIER_L_ALT 2
@@ -279,7 +279,8 @@ void desktop_update() {
             frames_since_click[activeMouse] = 0;
         } else if((~(mouseStatus[activeMouse])) & (oldMouseStatus[activeMouse]) & 1) {
             if(last_window_clicked < MAX_APPS) {
-                window_handler[last_window_clicked](WINDOW_EVENT_MOUSE_RELEASE);
+		current_app = last_window_clicked;
+		call_app_handler(WINDOW_EVENT_MOUSE_RELEASE);
                 last_window_clicked = MAX_APPS;
             } else if((dragging_index[activeMouse] != 0) && (dragging_index[activeMouse] < MAX_ICONS)) {
                     if(cabs(icons_x[dragging_index[activeMouse]] - icons_x[0]) < 8) {

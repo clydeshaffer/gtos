@@ -1,8 +1,6 @@
 #include "bittext.h"
 #include "font.h"
 
-#pragma code-name (push, "PROG0")
-#pragma rodata-name (push, "PROG0")
 
 pointer_t bittext_dest_u;
 char bittext_color = 32;
@@ -97,7 +95,7 @@ void bittext_erase_char() {
 void bittext_set_cursor(char x, char y) {
     dest_bytes.msb = 0x40 | (y >> 1);
     dest_bytes.lsb = x & 0x7F;
-    if(y & 128) dest_bytes.lsb |= 128;
+    if(y & 1) dest_bytes.lsb |= 128;
 }
 
 void bittext_write_str_opaque(char* c) {

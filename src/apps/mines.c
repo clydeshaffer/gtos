@@ -8,8 +8,8 @@
 #include "../gen/assets/gfx.h"
 #include "../gt/feature/random/random.h"
 
-#pragma code-name (push, "PROG0")
-#pragma rodata-name (push, "PROG0")
+#pragma code-name (push, "PROG1")
+#pragma rodata-name (push, "PROG1")
 
 #define SQUARE_COUNT 64
 #define WAS_RIGHT_CLICK 0x80
