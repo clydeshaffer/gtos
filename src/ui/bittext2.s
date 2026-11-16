@@ -1,3 +1,8 @@
+.export _bittext_x, _bittext_draw_char
+.export _bittext_set_x, _bittext_set_y
+.import _system_font_monochrome, _bittext_color, _bittext_bg
+.export text_row_0
+
 .segment "ZEROPAGE"
 bittext_pat:
 .byte 0, 0
@@ -7,6 +12,7 @@ _bittext_x:
     .byte 0
 
 .segment "DATA"
+_bittext_draw_char:
     ;A should be char
     SEC
     SBC #32 ;space character
@@ -26,42 +32,85 @@ _bittext_x:
     ADC bittext_pat
     STA loadFontPat+1
     LDA loadFontPat+2
-    ADC #0
+    ADC bittext_pat+1
     STA loadFontPat+2
     LDX #0
 
+    LDY _bittext_x
 ;LoaD from system_font_monochrome ;;this gets added to by previous instruction and restored at end
 loadFontPat:
     LDA _system_font_monochrome, x
+    STA bittext_pat
+    
 
+    LDA _bittext_bg
+    BBR0 bittext_pat, :+
     LDA _bittext_color
-    LDY _bittext_x
-    BBR0 bittext_pat, *+6
+:
 text_row_0:
-    STA 0x4000, y
-    BBR1 bittext_pat, *+6
+    STA $4000, y
+
+    LDA _bittext_bg
+    BBR1 bittext_pat, :+
+    LDA _bittext_color
+:
 text_row_1:
-    STA 0x4080, y
-    BBR2 bittext_pat, *+6
+    STA $4080, y
+
+    LDA _bittext_bg
+    BBR2 bittext_pat, :+
+    LDA _bittext_color
+:
 text_row_2:
-    STA 0x4100, y
-    BBR3 bittext_pat, *+6
+    STA $4000, y
+
+    LDA _bittext_bg
+    BBR3 bittext_pat, :+
+    LDA _bittext_color
+:
 text_row_3:
-    STA 0x4180, y
-    BBR4 bittext_pat, *+6
+    STA $4080, y
+
+    LDA _bittext_bg
+    BBR4 bittext_pat, :+
+    LDA _bittext_color
+:
 text_row_4:
-    STA 0x4200, y
-    BBR5 bittext_pat, *+6
+    STA $4000, y
+
+    LDA _bittext_bg
+    BBR5 bittext_pat, :+
+    LDA _bittext_color
+:
 text_row_5:
-    STA 0x4280, y
-    BBR6 bittext_pat, *+6
+    STA $4080, y
+
+    LDA _bittext_bg
+    BBR6 bittext_pat, :+
+    LDA _bittext_color
+:
 text_row_6:
-    STA 0x4300, y
-    BBR7 bittext_pat, *+6
+    STA $4000, y
+
+    LDA _bittext_bg
+    BBR7 bittext_pat, :+
+    LDA _bittext_color
+:
 text_row_7:
-    STA 0x4380, y
+    STA $4080, y
 
+    INY
+    INX
+    CPX #4
+    BEQ textdone
+    JMP loadFontPat
+textdone:
+    STY _bittext_x
 
+    LDA #<_system_font_monochrome
+    STA loadFontPat+1
+    LDA #>_system_font_monochrome
+    STA loadFontPat+2
     RTS
     
 .segment "CODE"
@@ -79,18 +128,18 @@ _bittext_set_y:
     TAY
     LSR
     CLC
-    ADC #40
-    STA text_row_0+1
-    STA text_row_1+1
+    ADC #$40
+    STA text_row_0+2
+    STA text_row_1+2
     INC
-    STA text_row_2+1
-    STA text_row_3+1
+    STA text_row_2+2
+    STA text_row_3+2
     INC
-    STA text_row_4+1
-    STA text_row_5+1
+    STA text_row_4+2
+    STA text_row_5+2
     INC
-    STA text_row_6+1
-    STA text_row_7+1
+    STA text_row_6+2
+    STA text_row_7+2
     LDA _bittext_x
     AND #$7F
     STA _bittext_x
